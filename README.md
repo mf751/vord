@@ -1,5 +1,5 @@
-# **Vordian**
-**vim as a browser**
+# **Vord**
+**vim as a web browser**
 ## **Features**
 
 ## Todo
