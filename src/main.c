@@ -16,10 +16,20 @@ typedef enum {
   VISUAL_MODE,
 } EditorMode;
 
+typedef struct {
+  int x;
+  int y;
+} Coordinates;
+
 static EditorMode current_mode = NORMAL_MODE;
 static GtkWidget *url_entry;
 static GtkWidget *web_view;
 static GtkWidget *mode_indicator;
+static int VISUAL_MODE_CURSOR_STEP = 7;
+static int VISUAL_MODE_CURSOR_WIDTH = 8;
+static int VISUAL_MODE_CURSOR_HEIGHT = 18;
+static char *VISUAL_MODE_CURSOR_BACKGROUND_COLOR = "rgba(38, 107, 255, .3)";
+static Coordinates visual_mode_cursor_coordinates = {.x = 0, .y = 0};
 
 static char *get_mode_name() {
   switch (current_mode) {
@@ -35,10 +45,58 @@ static char *get_mode_name() {
     return "Unkown";
   }
 }
+static void start_visual_mode() {
+  char js[1028];
+  snprintf(js, sizeof(js),
+           "if (!window.vordVisualOverlay) {"
+           "window.vordVisualOverlay = document.createElement('div');"
+           "window.vordVisualOverlay.style.position = 'absolute';"
+           "window.vordVisualOverlay.style.top = 'calc(50vh)';"
+           "window.vordVisualOverlay.style.left = 'calc(50vw)';"
+           "window.vordVisualOverlay.style.width = '%dpx';"
+           "window.vordVisualOverlay.style.height = '%dpx';"
+           "window.vordVisualOverlay.style.pointerEvents = 'none';"
+           "window.vordVisualOverlay.style.zIndex = '999999';"
+           "window.vordVisualOverlay.style.background = '%s';"
+           "document.body.appendChild(window.vordVisualOverlay);"
+           "window.vordVisualOverlay"
+           "}",
+           VISUAL_MODE_CURSOR_WIDTH, VISUAL_MODE_CURSOR_HEIGHT,
+           VISUAL_MODE_CURSOR_BACKGROUND_COLOR);
+
+  webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
+                                      NULL, NULL, NULL, NULL);
+}
+
+static void stop_visual_mode() {
+  const char *js = "if (window.vordVisualOverlay){"
+                   "window.vordVisualOverlay.remove();"
+                   "window.vordVisualOverlay = null;}";
+  webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
+                                      NULL, NULL, NULL, NULL);
+  visual_mode_cursor_coordinates.x = 0;
+  visual_mode_cursor_coordinates.y = 0;
+}
+
+static void update_visual_mode_cursor() {
+  char js[512];
+  snprintf(js, sizeof(js),
+           "if (window.vordVisualOverlay) {"
+           "  window.vordVisualOverlay.style.top = 'calc(50vh + %dpx)';"
+           "  window.vordVisualOverlay.style.left = 'calc(50vw + %dpx)';"
+           "}",
+           visual_mode_cursor_coordinates.y, visual_mode_cursor_coordinates.x);
+  webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
+                                      NULL, NULL, NULL, NULL);
+}
 
 static void set_mode(EditorMode new_mode) {
+  if (current_mode == VISUAL_MODE && new_mode == NORMAL_MODE)
+    stop_visual_mode();
   current_mode = new_mode;
   gtk_label_set_text(GTK_LABEL(mode_indicator), get_mode_name());
+  if (new_mode == VISUAL_MODE)
+    start_visual_mode();
 }
 
 static void scroll_webview(int dx, int dy) {
@@ -64,6 +122,9 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
     case GDK_KEY_i:
       set_mode(INSERT_MODE);
       return TRUE;
+    case GDK_KEY_v:
+      set_mode(VISUAL_MODE);
+      return TRUE;
     case GDK_KEY_h:
       scroll_webview(-120, 0);
       return TRUE;
@@ -80,7 +141,31 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
       scroll_webview(0, 120);
       return TRUE;
     }
+  } else if (current_mode == VISUAL_MODE) {
+    switch (keyval) {
+    case GDK_KEY_h:
+      visual_mode_cursor_coordinates.x -= VISUAL_MODE_CURSOR_STEP;
+      update_visual_mode_cursor();
+      return 1;
+    case GDK_KEY_l:
+      visual_mode_cursor_coordinates.x += VISUAL_MODE_CURSOR_STEP;
+      update_visual_mode_cursor();
+      return 1;
+    case GDK_KEY_j:
+      visual_mode_cursor_coordinates.y += VISUAL_MODE_CURSOR_STEP;
+      update_visual_mode_cursor();
+      return 1;
+    case GDK_KEY_k:
+      visual_mode_cursor_coordinates.y -= VISUAL_MODE_CURSOR_STEP;
+      update_visual_mode_cursor();
+      return 1;
+    case GDK_KEY_v:
+      set_mode(NORMAL_MODE);
+      stop_visual_mode();
+      return 1;
+    }
   }
+
   return 0;
 }
 
@@ -141,11 +226,10 @@ static void activate(GtkApplication *app, gpointer user_data) {
   g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
 
   mode_indicator = gtk_label_new_with_mnemonic(get_mode_name());
-  gtk_widget_set_size_request(mode_indicator, 64, 32);
+  gtk_widget_set_size_request(mode_indicator, 84, -1);
   gtk_widget_add_css_class(mode_indicator, "mode-label");
   GtkCssProvider *provider = gtk_css_provider_new();
   const char *css = ".mode-label {"
-                    "  background-color: tansparent;"
                     "  color: #ddd;"
                     "  font-size: 12px;"
                     "  font-weight: 800;"
