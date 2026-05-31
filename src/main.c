@@ -1,20 +1,45 @@
 // Copyright (c) 2026 mf751. All Rights Reserved.
 
+#include "gdk/gdk.h"
 #include "gdk/gdkkeysyms.h"
+#include "glib-object.h"
 #include "glib.h"
+#include "gtk/gtkcssprovider.h"
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include <webkit/webkit.h>
 
-const char NORMAL_MODE = 0;
-const char INSERT_MODE = 1;
-const char ADRESS_MODE = 2;
-const char VISUAL_MODE = 3;
+typedef enum {
+  NORMAL_MODE = 0,
+  INSERT_MODE,
+  ADDRESS_MODE,
+  VISUAL_MODE,
+} EditorMode;
 
-static char mode = 0;
-
+static EditorMode current_mode = NORMAL_MODE;
 static GtkWidget *url_entry;
 static GtkWidget *web_view;
+static GtkWidget *mode_indicator;
+
+static char *get_mode_name() {
+  switch (current_mode) {
+  case NORMAL_MODE:
+    return "Normal";
+  case INSERT_MODE:
+    return "Insert";
+  case ADDRESS_MODE:
+    return "Address";
+  case VISUAL_MODE:
+    return "VISUAL";
+  default:
+    return "Unkown";
+  }
+}
+
+static void set_mode(EditorMode new_mode) {
+  current_mode = new_mode;
+  gtk_label_set_text(GTK_LABEL(mode_indicator), get_mode_name());
+}
 
 static void scroll_webview(int dx, int dy) {
   char js[120];
@@ -30,14 +55,15 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
   GtkWidget *window =
       gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
   if (keyval == GDK_KEY_Escape) {
-    mode = 0;
+    set_mode(NORMAL_MODE);
     return 1;
   }
 
-  if (mode == NORMAL_MODE) {
+  if (current_mode == NORMAL_MODE) {
     switch (keyval) {
     case GDK_KEY_i:
-      mode = 1;
+      set_mode(INSERT_MODE);
+      return TRUE;
     case GDK_KEY_h:
       scroll_webview(-120, 0);
       return TRUE;
@@ -114,10 +140,31 @@ static void activate(GtkApplication *app, gpointer user_data) {
   gtk_widget_set_hexpand(url_entry, TRUE);
   g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
 
+  mode_indicator = gtk_label_new_with_mnemonic(get_mode_name());
+  gtk_widget_set_size_request(mode_indicator, 64, 32);
+  gtk_widget_add_css_class(mode_indicator, "mode-label");
+  GtkCssProvider *provider = gtk_css_provider_new();
+  const char *css = ".mode-label {"
+                    "  background-color: tansparent;"
+                    "  color: #ddd;"
+                    "  font-size: 12px;"
+                    "  font-weight: 800;"
+                    "  font-family: sans-serif;"
+                    "  padding: 4px 10px;"
+                    "  border-radius: 0px;"
+                    "  text-transform: uppercase;"
+                    "}";
+  gtk_css_provider_load_from_string(provider, css);
+  gtk_style_context_add_provider_for_display(gdk_display_get_default(),
+                                             GTK_STYLE_PROVIDER(provider),
+                                             GTK_STYLE_PROVIDER_PRIORITY_USER);
+  g_object_unref(provider);
+
   gtk_box_append(GTK_BOX(top_bar), back_btn);
   gtk_box_append(GTK_BOX(top_bar), forward_btn);
   gtk_box_append(GTK_BOX(top_bar), reload_btn);
   gtk_box_append(GTK_BOX(top_bar), url_entry);
+  gtk_box_append(GTK_BOX(top_bar), mode_indicator);
 
   web_view = webkit_web_view_new();
   gtk_widget_set_vexpand(web_view, TRUE);
