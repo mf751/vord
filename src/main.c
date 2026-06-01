@@ -4,6 +4,7 @@
 #include "gdk/gdkkeysyms.h"
 #include "glib-object.h"
 #include "glib.h"
+#include "glibconfig.h"
 #include "gtk/gtkcssprovider.h"
 #include <gtk/gtk.h>
 #include <stdio.h>
@@ -25,12 +26,15 @@ static EditorMode current_mode = NORMAL_MODE;
 static GtkWidget *url_entry;
 static GtkWidget *web_view;
 static GtkWidget *mode_indicator;
-static int VISUAL_MODE_CURSOR_STEP = 7;
+static int VISUAL_MODE_CURSOR_STEP_X = 5;
+static int VISUAL_MODE_CURSOR_STEP_Y = 10;
 static int VISUAL_MODE_CURSOR_WIDTH = 8;
 static int VISUAL_MODE_CURSOR_HEIGHT = 18;
 static char *VISUAL_MODE_CURSOR_BACKGROUND_COLOR = "rgba(38, 107, 255, .3)";
-static Coordinates visual_mode_cursor_coordinates = {.x = 0, .y = 0};
-static int NORMAL_MODE_SCROLL_DISTANCE = 120;
+static Coordinates visual_mode_cursor = {.x = 0, .y = 0};
+static Coordinates visual_mode_anchor = {.x = 0, .y = 0};
+static bool visual_mode_anchor_set = false;
+static int NORMAL_MODE_SCROLL_DISTANCE = 32;
 
 static char *get_mode_name() {
   switch (current_mode) {
@@ -75,33 +79,46 @@ static void stop_visual_mode() {
                    "window.vordVisualOverlay = null;}";
   webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
                                       NULL, NULL, NULL, NULL);
-  visual_mode_cursor_coordinates.x = 0;
-  visual_mode_cursor_coordinates.y = 0;
+  visual_mode_cursor.x = 0;
+  visual_mode_cursor.y = 0;
 }
 
 static void update_visual_mode_cursor() {
   char js[1028];
-  snprintf(js, sizeof(js),
-           "(function() {"
-           "if (!window.vordVisualOverlay) return; "
-           "const pt1X = 0.5 * window.innerWidth + 0;"
-           "const pt1y = 0.5 * window.innerHeight + 0;"
-           "const pt2X = 0.5 * window.innerWidth + %d;"
-           "const pt2y = 0.5 * window.innerHeight + %d;"
-           "const sel = window.getSelection();"
-           "sel.removeAllRanges();"
-           "const startRange = document.caretRangeFromPoint(pt1X, pt1y);"
-           "const endRange = document.caretRangeFromPoint(pt2X, pt2y);"
-           "if (startRange && endRange){"
-           "const range = document.createRange();"
-           "range.setStart(startRange.startContainer, startRange.startOffset);"
-           "range.setEnd(endRange.startContainer, endRange.startOffset);"
-           "sel.addRange(range);}"
-           "window.vordVisualOverlay.style.left = 'calc(50vw + %dpx)';"
-           "window.vordVisualOverlay.style.top = 'calc(50vh + %dpx)';"
-           "})();",
-           visual_mode_cursor_coordinates.x, visual_mode_cursor_coordinates.y,
-           visual_mode_cursor_coordinates.x, visual_mode_cursor_coordinates.y);
+  snprintf(
+      js, sizeof(js),
+      "(function() {"
+      "if (!window.vordVisualOverlay) return; "
+      "if (%d) {"
+      "const pt1X = 0.5 * window.innerWidth + %d;"
+      "const pt1y = 0.5 * window.innerHeight + %d;"
+      "const pt2X = 0.5 * window.innerWidth + %d;"
+      "const pt2y = 0.5 * window.innerHeight + %d;"
+      "const sel = window.getSelection();"
+      "sel.removeAllRanges();"
+      "const start = document.caretRangeFromPoint(pt1X, pt1y);"
+      "const end = document.caretRangeFromPoint(pt2X, pt2y);"
+      "if (start && end){"
+      "const range = document.createRange();"
+      // check wihch comes first in the page
+      "if (start.startContainer.compareDocumentPosition(end.startContainer) & "
+      "Node.DOCUMENT_POSITION_FOLLOWING || (start.startContainer === "
+      "end.startContainer && start.startOffset <= end.startOffset)){"
+      "range.setStart(start.startContainer, start.startOffset);"
+      "range.setEnd(end.startContainer, end.startOffset);"
+      "} else {"
+      "range.setStart(end.startContainer, end.startOffset);"
+      "range.setEnd(start.startContainer, start.startOffset);"
+      "}"
+
+      "sel.addRange(range);}"
+      "};"
+      "window.vordVisualOverlay.style.left = 'calc(50vw + %dpx)';"
+      "window.vordVisualOverlay.style.top = 'calc(50vh + %dpx)';"
+      "})();",
+      visual_mode_anchor_set, visual_mode_anchor.x, visual_mode_anchor.y,
+      visual_mode_cursor.x, visual_mode_cursor.y, visual_mode_cursor.x,
+      visual_mode_cursor.y);
   webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
                                       NULL, NULL, NULL, NULL);
 }
@@ -117,8 +134,7 @@ static void set_mode(EditorMode new_mode) {
 
 static void scroll_webview(int dx, int dy) {
   char js[120];
-  snprintf(js, sizeof(js),
-           "window.scrollBy({left: %d, top: %d, behavior: 'smooth'});", dx, dy);
+  snprintf(js, sizeof(js), "window.scrollBy({left: %d, top: %d});", dx, dy);
   webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
                                       NULL, NULL, NULL, NULL);
 }
@@ -167,36 +183,48 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
     case GDK_KEY_h:
       if (ctrl_pressed) {
         scroll_webview(-NORMAL_MODE_SCROLL_DISTANCE, 0);
+        update_visual_mode_cursor();
         return 1;
       }
-      visual_mode_cursor_coordinates.x -= VISUAL_MODE_CURSOR_STEP;
+      visual_mode_cursor.x -= VISUAL_MODE_CURSOR_STEP_X;
       update_visual_mode_cursor();
       return 1;
     case GDK_KEY_l:
       if (ctrl_pressed) {
+        update_visual_mode_cursor();
         scroll_webview(NORMAL_MODE_SCROLL_DISTANCE, 0);
         return 1;
       }
-      visual_mode_cursor_coordinates.x += VISUAL_MODE_CURSOR_STEP;
+      visual_mode_cursor.x += VISUAL_MODE_CURSOR_STEP_X;
       update_visual_mode_cursor();
       return 1;
     case GDK_KEY_k:
       if (ctrl_pressed) {
         scroll_webview(0, -NORMAL_MODE_SCROLL_DISTANCE);
+        update_visual_mode_cursor();
         return 1;
       }
-      visual_mode_cursor_coordinates.y -= VISUAL_MODE_CURSOR_STEP;
+      visual_mode_cursor.y -= VISUAL_MODE_CURSOR_STEP_Y;
       update_visual_mode_cursor();
       return 1;
     case GDK_KEY_j:
       if (ctrl_pressed) {
         scroll_webview(0, NORMAL_MODE_SCROLL_DISTANCE);
+        update_visual_mode_cursor();
         return 1;
       }
-      visual_mode_cursor_coordinates.y += VISUAL_MODE_CURSOR_STEP;
+      visual_mode_cursor.y += VISUAL_MODE_CURSOR_STEP_Y;
       update_visual_mode_cursor();
       return 1;
     case GDK_KEY_v:
+      if (visual_mode_anchor_set) {
+        visual_mode_anchor_set = !visual_mode_anchor_set;
+        update_visual_mode_cursor();
+        return 1;
+      }
+      visual_mode_anchor_set = TRUE;
+      visual_mode_anchor = visual_mode_cursor;
+      update_visual_mode_cursor();
       return 1;
     }
   }
