@@ -30,6 +30,7 @@ static int VISUAL_MODE_CURSOR_WIDTH = 8;
 static int VISUAL_MODE_CURSOR_HEIGHT = 18;
 static char *VISUAL_MODE_CURSOR_BACKGROUND_COLOR = "rgba(38, 107, 255, .3)";
 static Coordinates visual_mode_cursor_coordinates = {.x = 0, .y = 0};
+static int NORMAL_MODE_SCROLL_DISTANCE = 120;
 
 static char *get_mode_name() {
   switch (current_mode) {
@@ -50,7 +51,7 @@ static void start_visual_mode() {
   snprintf(js, sizeof(js),
            "if (!window.vordVisualOverlay) {"
            "window.vordVisualOverlay = document.createElement('div');"
-           "window.vordVisualOverlay.style.position = 'absolute';"
+           "window.vordVisualOverlay.style.position = 'fixed';"
            "window.vordVisualOverlay.style.top = 'calc(50vh)';"
            "window.vordVisualOverlay.style.left = 'calc(50vw)';"
            "window.vordVisualOverlay.style.width = '%dpx';"
@@ -79,13 +80,28 @@ static void stop_visual_mode() {
 }
 
 static void update_visual_mode_cursor() {
-  char js[512];
+  char js[1028];
   snprintf(js, sizeof(js),
-           "if (window.vordVisualOverlay) {"
-           "  window.vordVisualOverlay.style.top = 'calc(50vh + %dpx)';"
-           "  window.vordVisualOverlay.style.left = 'calc(50vw + %dpx)';"
-           "}",
-           visual_mode_cursor_coordinates.y, visual_mode_cursor_coordinates.x);
+           "(function() {"
+           "if (!window.vordVisualOverlay) return; "
+           "const pt1X = 0.5 * window.innerWidth + 0;"
+           "const pt1y = 0.5 * window.innerHeight + 0;"
+           "const pt2X = 0.5 * window.innerWidth + %d;"
+           "const pt2y = 0.5 * window.innerHeight + %d;"
+           "const sel = window.getSelection();"
+           "sel.removeAllRanges();"
+           "const startRange = document.caretRangeFromPoint(pt1X, pt1y);"
+           "const endRange = document.caretRangeFromPoint(pt2X, pt2y);"
+           "if (startRange && endRange){"
+           "const range = document.createRange();"
+           "range.setStart(startRange.startContainer, startRange.startOffset);"
+           "range.setEnd(endRange.startContainer, endRange.startOffset);"
+           "sel.addRange(range);}"
+           "window.vordVisualOverlay.style.left = 'calc(50vw + %dpx)';"
+           "window.vordVisualOverlay.style.top = 'calc(50vh + %dpx)';"
+           "})();",
+           visual_mode_cursor_coordinates.x, visual_mode_cursor_coordinates.y,
+           visual_mode_cursor_coordinates.x, visual_mode_cursor_coordinates.y);
   webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
                                       NULL, NULL, NULL, NULL);
 }
@@ -114,8 +130,13 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
       gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
   if (keyval == GDK_KEY_Escape) {
     set_mode(NORMAL_MODE);
+    if (current_mode == VISUAL_MODE)
+      stop_visual_mode();
     return 1;
   }
+
+  gboolean ctrl_pressed = (state & GDK_CONTROL_MASK) != 0;
+  gboolean shift_pressed = (state & GDK_SHIFT_MASK) != 0;
 
   if (current_mode == NORMAL_MODE) {
     switch (keyval) {
@@ -126,42 +147,56 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
       set_mode(VISUAL_MODE);
       return TRUE;
     case GDK_KEY_h:
-      scroll_webview(-120, 0);
+      scroll_webview(-NORMAL_MODE_SCROLL_DISTANCE, 0);
       return TRUE;
 
     case GDK_KEY_l:
-      scroll_webview(120, 0);
+      scroll_webview(NORMAL_MODE_SCROLL_DISTANCE, 0);
       return TRUE;
 
     case GDK_KEY_k:
-      scroll_webview(0, -120);
+      scroll_webview(0, -NORMAL_MODE_SCROLL_DISTANCE);
       return TRUE;
 
     case GDK_KEY_j:
-      scroll_webview(0, 120);
+      scroll_webview(0, NORMAL_MODE_SCROLL_DISTANCE);
       return TRUE;
     }
   } else if (current_mode == VISUAL_MODE) {
     switch (keyval) {
     case GDK_KEY_h:
+      if (ctrl_pressed) {
+        scroll_webview(-NORMAL_MODE_SCROLL_DISTANCE, 0);
+        return 1;
+      }
       visual_mode_cursor_coordinates.x -= VISUAL_MODE_CURSOR_STEP;
       update_visual_mode_cursor();
       return 1;
     case GDK_KEY_l:
+      if (ctrl_pressed) {
+        scroll_webview(NORMAL_MODE_SCROLL_DISTANCE, 0);
+        return 1;
+      }
       visual_mode_cursor_coordinates.x += VISUAL_MODE_CURSOR_STEP;
       update_visual_mode_cursor();
       return 1;
-    case GDK_KEY_j:
-      visual_mode_cursor_coordinates.y += VISUAL_MODE_CURSOR_STEP;
-      update_visual_mode_cursor();
-      return 1;
     case GDK_KEY_k:
+      if (ctrl_pressed) {
+        scroll_webview(0, -NORMAL_MODE_SCROLL_DISTANCE);
+        return 1;
+      }
       visual_mode_cursor_coordinates.y -= VISUAL_MODE_CURSOR_STEP;
       update_visual_mode_cursor();
       return 1;
+    case GDK_KEY_j:
+      if (ctrl_pressed) {
+        scroll_webview(0, NORMAL_MODE_SCROLL_DISTANCE);
+        return 1;
+      }
+      visual_mode_cursor_coordinates.y += VISUAL_MODE_CURSOR_STEP;
+      update_visual_mode_cursor();
+      return 1;
     case GDK_KEY_v:
-      set_mode(NORMAL_MODE);
-      stop_visual_mode();
       return 1;
     }
   }
