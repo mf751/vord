@@ -76,7 +76,8 @@ static void start_visual_mode() {
 static void stop_visual_mode() {
   const char *js = "if (window.vordVisualOverlay){"
                    "window.vordVisualOverlay.remove();"
-                   "window.vordVisualOverlay = null;}";
+                   "window.vordVisualOverlay = null;}"
+                   "window.getSelection().removeAllRanges()";
   webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
                                       NULL, NULL, NULL, NULL);
   visual_mode_cursor.x = 0;
@@ -121,6 +122,65 @@ static void update_visual_mode_cursor() {
       visual_mode_cursor.y);
   webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
                                       NULL, NULL, NULL, NULL);
+}
+
+static void copy_to_clipboard(char *text) {
+  GdkDisplay *display = gdk_display_get_default();
+  GdkClipboard *clipboard = gdk_display_get_clipboard(display);
+  gdk_clipboard_set_text(clipboard, text);
+}
+
+static void on_js_evaluated(GObject *source_object, GAsyncResult *res,
+                            gpointer user_data) {
+  WebKitWebView *web_view = WEBKIT_WEB_VIEW(source_object);
+  GError *error = NULL;
+
+  JSCValue *js_value =
+      webkit_web_view_evaluate_javascript_finish(web_view, res, &error);
+
+  if (error) {
+    g_warning("JS Evaluation Error: %s\n", error->message);
+    g_error_free(error);
+    return;
+  }
+
+  if (jsc_value_is_string(js_value)) {
+    gchar *str_value = jsc_value_to_string(js_value);
+    copy_to_clipboard(str_value);
+    g_free(str_value);
+  }
+
+  g_object_unref(js_value);
+}
+
+static void yank_visual_selection() {
+  const char *js = "(function() {"
+                   "  const sel = window.getSelection();"
+                   "  if (!sel.rangeCount) return;"
+                   "  const range = sel.getRangeAt(0);"
+                   "  const rects = range.getClientRects();"
+                   "  for (const rect of rects) {"
+                   "    const div = document.createElement('div');"
+                   "    div.style.position = 'fixed';"
+                   "    div.style.left = rect.left + 'px';"
+                   "    div.style.top = rect.top + 'px';"
+                   "    div.style.width = rect.width + 'px';"
+                   "    div.style.height = rect.height + 'px';"
+                   "    div.style.background = 'rgba(255,255,0,0.6)';"
+                   "    div.style.pointerEvents = 'none';"
+                   "    div.style.zIndex = 999999;"
+                   "    div.style.transition = 'opacity 0.5s ease';"
+                   "    document.body.appendChild(div);"
+                   "    setTimeout(() => {"
+                   "      div.style.opacity = '0';"
+                   "      setTimeout(() => div.remove(), 500);"
+                   "    }, 300);"
+                   "  }"
+                   "return sel.toString()"
+                   "})();";
+
+  webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
+                                      NULL, NULL, on_js_evaluated, NULL);
 }
 
 static void set_mode(EditorMode new_mode) {
@@ -226,6 +286,10 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
       visual_mode_anchor = visual_mode_cursor;
       update_visual_mode_cursor();
       return 1;
+    case GDK_KEY_y:
+      yank_visual_selection();
+      update_visual_mode_cursor();
+      return 1;
     }
   }
 
@@ -264,54 +328,48 @@ static void reload() { webkit_web_view_reload(WEBKIT_WEB_VIEW(web_view)); }
 
 static void activate(GtkApplication *app, gpointer user_data) {
   GtkWidget *window = gtk_application_window_new(app);
-  gtk_window_set_title(GTK_WINDOW(window), "Vordian");
+  gtk_window_set_title(GTK_WINDOW(window), "Vord");
   gtk_window_set_default_size(GTK_WINDOW(window), 1920, 1080);
 
   GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
   GtkWidget *top_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-  gtk_widget_set_margin_end(top_bar, 8);
-  gtk_widget_set_margin_start(top_bar, 8);
-  gtk_widget_set_margin_top(top_bar, 8);
-  gtk_widget_set_margin_bottom(top_bar, 8);
-
-  GtkWidget *back_btn = gtk_button_new_with_label("←");
-  g_signal_connect(back_btn, "clicked", G_CALLBACK(go_back), NULL);
-
-  GtkWidget *forward_btn = gtk_button_new_with_label("→");
-  g_signal_connect(forward_btn, "clicked", G_CALLBACK(go_forward), NULL);
-
-  GtkWidget *reload_btn = gtk_button_new_with_label("↻");
-  g_signal_connect(reload_btn, "clicked", G_CALLBACK(reload), NULL);
 
   url_entry = gtk_entry_new();
   gtk_widget_set_hexpand(url_entry, TRUE);
-  g_signal_connect(url_entry, "activate", G_CALLBACK(on_url_activate), NULL);
+  gtk_widget_add_css_class(url_entry, "url-entry");
 
   mode_indicator = gtk_label_new_with_mnemonic(get_mode_name());
   gtk_widget_set_size_request(mode_indicator, 84, -1);
   gtk_widget_add_css_class(mode_indicator, "mode-label");
-  GtkCssProvider *provider = gtk_css_provider_new();
+
   const char *css = ".mode-label {"
-                    "  color: #ddd;"
-                    "  font-size: 12px;"
-                    "  font-weight: 800;"
-                    "  font-family: sans-serif;"
-                    "  padding: 4px 10px;"
-                    "  border-radius: 0px;"
-                    "  text-transform: uppercase;"
+                    "background-color: #333;"
+                    "color: #eee;"
+                    "font-size: 12px;"
+                    "font-weight: 800;"
+                    "font-family: sans-serif;"
+                    "border-radius: 0px;"
+                    "padding: 0;"
+                    "margin: 0;"
+                    "text-transform: uppercase;"
+                    "}"
+                    "entry.url-entry {"
+                    "box-shadow: none;"
+                    "border: none;"
+                    "outline: none;"
+                    "padding: 0;"
+                    "margin: 0;"
                     "}";
+  GtkCssProvider *provider = gtk_css_provider_new();
   gtk_css_provider_load_from_string(provider, css);
   gtk_style_context_add_provider_for_display(gdk_display_get_default(),
                                              GTK_STYLE_PROVIDER(provider),
                                              GTK_STYLE_PROVIDER_PRIORITY_USER);
   g_object_unref(provider);
 
-  gtk_box_append(GTK_BOX(top_bar), back_btn);
-  gtk_box_append(GTK_BOX(top_bar), forward_btn);
-  gtk_box_append(GTK_BOX(top_bar), reload_btn);
-  gtk_box_append(GTK_BOX(top_bar), url_entry);
   gtk_box_append(GTK_BOX(top_bar), mode_indicator);
+  gtk_box_append(GTK_BOX(top_bar), url_entry);
 
   web_view = webkit_web_view_new();
   gtk_widget_set_vexpand(web_view, TRUE);
@@ -335,8 +393,8 @@ static void activate(GtkApplication *app, gpointer user_data) {
 }
 
 int main(int argc, char **argv) {
-  GtkApplication *app = gtk_application_new("com.github.mf751.vordian",
-                                            G_APPLICATION_DEFAULT_FLAGS);
+  GtkApplication *app =
+      gtk_application_new("com.github.mf751.vord", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
 
   int status = g_application_run(G_APPLICATION(app), argc, argv);
