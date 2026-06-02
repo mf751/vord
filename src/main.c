@@ -344,22 +344,24 @@ static void activate(GtkApplication *app, gpointer user_data) {
   gtk_widget_add_css_class(mode_indicator, "mode-label");
 
   const char *css = ".mode-label {"
-                    "background-color: #333;"
-                    "color: #eee;"
-                    "font-size: 12px;"
-                    "font-weight: 800;"
-                    "font-family: sans-serif;"
+                    "background-color: #202827;"
+                    "color: #ccc;"
+                    "font-size: 14px;"
+                    "font-family: 'Sans Serif';"
                     "border-radius: 0px;"
                     "padding: 0;"
                     "margin: 0;"
                     "text-transform: uppercase;"
+                    "font-weight: 600;"
                     "}"
                     "entry.url-entry {"
-                    "box-shadow: none;"
-                    "border: none;"
+                    "min-height: 0;"
+                    "padding-top: 0;"
+                    "padding-bottom: 0;"
                     "outline: none;"
-                    "padding: 0;"
-                    "margin: 0;"
+                    "border-width: 0;"
+                    "box-shadow: none;"
+                    "background-image: none;"
                     "}";
   GtkCssProvider *provider = gtk_css_provider_new();
   gtk_css_provider_load_from_string(provider, css);
@@ -370,6 +372,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
   gtk_box_append(GTK_BOX(top_bar), mode_indicator);
   gtk_box_append(GTK_BOX(top_bar), url_entry);
+  gtk_box_set_spacing(GTK_BOX(top_bar), 0);
 
   web_view = webkit_web_view_new();
   gtk_widget_set_vexpand(web_view, TRUE);
@@ -387,7 +390,12 @@ static void activate(GtkApplication *app, gpointer user_data) {
                    NULL);
   gtk_widget_add_controller(window, key_controller);
 
-  webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), "https://www.google.com");
+  WebKitSettings *settings =
+      webkit_web_view_get_settings(WEBKIT_WEB_VIEW(web_view));
+
+  char *path = realpath("./assets/start.html", NULL);
+  char *uri = g_filename_to_uri(path, NULL, NULL);
+  webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), uri);
 
   gtk_widget_queue_draw(window);
 }
