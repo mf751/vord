@@ -16,23 +16,77 @@
         justify-content: center;
       }
 
-      .box {
-        text-align: center;
+      .title-box {
+        margin-bottom: 24px;
       }
 
-      input {
-        background: #1e1e1e;
-        border: 1px solid #333;
-        color: white;
-        padding: 10px;
-        width: 400px;
+      .title,
+      .description {
+        text-align: center;
+        margin: 0;
+        padding: 0;
+      }
+
+      .title {
+        margin-bottom: 8px;
+      }
+
+      .version {
+        padding: 0;
+        text-align: center;
+        margin: 0;
+      }
+
+      .vim {
+        color: #2c79f5;
+      }
+
+      .seperator {
+        height: 1px;
+        background-color: #eee;
+        margin: 8px 0;
+      }
+
+      .help-menu {
+        display: flex;
+        flex-direction:;
+        gap: 24px;
+        padding: 8px;
+        font-weight: 420;
+      }
+      .help-menu > div {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
     </style>
   </head>
   <body>
     <div class="box">
-      <h1>New Tab</h1>
-      <input placeholder="Search or enter URL" />
+      <div class="title-box">
+        <h1 class="title"><span class="vim">V</span>ord</h1>
+        <h3 class="description">Web Browser <span class="vim">Vim</span></h3>
+      </div>
+      <div class="seperator"></div>
+      <h3 class="version">Version <span class="vim">1.0</span></h3>
+      <div class="seperator"></div>
+      <div class="help-menu">
+        <div class="type">
+          <div class="vim"><span>Type </span></div>
+          <div class="vim"><span>Type </span></div>
+          <div class="vim"><span>Type </span></div>
+        </div>
+        <div class="keyword">
+          <div>:help</div>
+          <div>:q</div>
+          <div>:darkmode</div>
+        </div>
+        <div class="command-description">
+          <div>show help menu</div>
+          <div>quit vord</div>
+          <div>toggle dark mode</div>
+        </div>
+      </div>
     </div>
   </body>
 </html>

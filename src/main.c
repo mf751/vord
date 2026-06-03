@@ -333,19 +333,18 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
   GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
-  GtkWidget *top_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+  GtkWidget *top_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 
   url_entry = gtk_entry_new();
-  gtk_widget_set_hexpand(url_entry, TRUE);
+  gtk_widget_set_hexpand(url_entry, true);
   gtk_widget_add_css_class(url_entry, "url-entry");
 
   mode_indicator = gtk_label_new_with_mnemonic(get_mode_name());
-  gtk_widget_set_size_request(mode_indicator, 84, -1);
+  gtk_widget_set_size_request(mode_indicator, 84, 8);
   gtk_widget_add_css_class(mode_indicator, "mode-label");
 
   const char *css = ".mode-label {"
-                    "background-color: #202827;"
-                    "color: #ccc;"
+                    "color: #fff;"
                     "font-size: 14px;"
                     "font-family: 'Sans Serif';"
                     "border-radius: 0px;"
@@ -353,15 +352,18 @@ static void activate(GtkApplication *app, gpointer user_data) {
                     "margin: 0;"
                     "text-transform: uppercase;"
                     "font-weight: 600;"
+                    "background-color: red;"
                     "}"
-                    "entry.url-entry {"
-                    "min-height: 0;"
-                    "padding-top: 0;"
-                    "padding-bottom: 0;"
-                    "outline: none;"
-                    "border-width: 0;"
+                    ".url-entry,"
+                    ".url-entry text,"
+                    ".url-entry image {"
+                    " border-radius: 0;"
+                    "color: #fff;"
+                    "border: none;"
                     "box-shadow: none;"
+                    "outline-width: 0px;"
                     "background-image: none;"
+                    "background-color: transparent;"
                     "}";
   GtkCssProvider *provider = gtk_css_provider_new();
   gtk_css_provider_load_from_string(provider, css);
