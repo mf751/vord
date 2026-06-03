@@ -340,27 +340,29 @@ static void activate(GtkApplication *app, gpointer user_data) {
   gtk_widget_add_css_class(url_entry, "url-entry");
 
   mode_indicator = gtk_label_new_with_mnemonic(get_mode_name());
-  gtk_widget_set_size_request(mode_indicator, 84, 8);
   gtk_widget_add_css_class(mode_indicator, "mode-label");
+  gtk_widget_set_size_request(mode_indicator, 84, -1);
 
   const char *css = ".mode-label {"
-                    "color: #fff;"
+                    "color: #2c79f5;"
                     "font-size: 14px;"
+                    "line-height: 0.5;"
                     "font-family: 'Sans Serif';"
                     "border-radius: 0px;"
-                    "padding: 0;"
+                    "padding-left: 12px;"
+                    "padding-right: 12px;"
                     "margin: 0;"
                     "text-transform: uppercase;"
-                    "font-weight: 600;"
-                    "background-color: red;"
+                    "font-weight: bolder;"
                     "}"
                     ".url-entry,"
-                    ".url-entry text,"
-                    ".url-entry image {"
+                    ".url-entry ,"
+                    ".url-entry  {"
                     " border-radius: 0;"
                     "color: #fff;"
                     "border: none;"
                     "box-shadow: none;"
+                    "padding:0  0;"
                     "outline-width: 0px;"
                     "background-image: none;"
                     "background-color: transparent;"
