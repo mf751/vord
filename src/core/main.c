@@ -35,6 +35,7 @@ static char *VISUAL_MODE_CURSOR_BACKGROUND_COLOR = "rgba(38, 107, 255, .3)";
 static Coordinates visual_mode_cursor = {.x = 0, .y = 0};
 static Coordinates visual_mode_anchor = {.x = 0, .y = 0};
 static bool visual_mode_anchor_set = false;
+static bool command_line = false;
 static int NORMAL_MODE_SCROLL_DISTANCE = 32;
 
 static char *get_mode_name() {
@@ -156,27 +157,27 @@ static void on_js_evaluated(GObject *source_object, GAsyncResult *res,
 
 static void yank_visual_selection() {
   const char *js = "(function() {"
-                   "  const sel = window.getSelection();"
-                   "  if (!sel.rangeCount) return;"
-                   "  const range = sel.getRangeAt(0);"
-                   "  const rects = range.getClientRects();"
-                   "  for (const rect of rects) {"
-                   "    const div = document.createElement('div');"
-                   "    div.style.position = 'fixed';"
-                   "    div.style.left = rect.left + 'px';"
-                   "    div.style.top = rect.top + 'px';"
-                   "    div.style.width = rect.width + 'px';"
-                   "    div.style.height = rect.height + 'px';"
-                   "    div.style.background = 'rgba(255,255,0,0.6)';"
-                   "    div.style.pointerEvents = 'none';"
-                   "    div.style.zIndex = 999999;"
-                   "    div.style.transition = 'opacity 0.5s ease';"
-                   "    document.body.appendChild(div);"
-                   "    setTimeout(() => {"
-                   "      div.style.opacity = '0';"
-                   "      setTimeout(() => div.remove(), 500);"
-                   "    }, 300);"
-                   "  }"
+                   "const sel = window.getSelection();"
+                   "if (!sel.rangeCount) return;"
+                   "const range = sel.getRangeAt(0);"
+                   "const rects = range.getClientRects();"
+                   "for (const rect of rects) {"
+                   "const div = document.createElement('div');"
+                   "div.style.position = 'fixed';"
+                   "div.style.left = rect.left + 'px';"
+                   "div.style.top = rect.top + 'px';"
+                   "div.style.width = rect.width + 'px';"
+                   "div.style.height = rect.height + 'px';"
+                   "div.style.background = 'rgba(255,255,0,0.6)';"
+                   "div.style.pointerEvents = 'none';"
+                   "div.style.zIndex = 999999;"
+                   "div.style.transition = 'opacity 0.5s ease';"
+                   "document.body.appendChild(div);"
+                   "setTimeout(() => {"
+                   "div.style.opacity = '0';"
+                   "setTimeout(() => div.remove(), 500);"
+                   "}, 300);"
+                   "}"
                    "return sel.toString()"
                    "})();";
 
@@ -191,6 +192,16 @@ static void set_mode(EditorMode new_mode) {
   gtk_label_set_text(GTK_LABEL(mode_indicator), get_mode_name());
   if (new_mode == VISUAL_MODE)
     start_visual_mode();
+}
+
+static void show_command_line() {
+  gtk_widget_set_visible(cmd_overlay, TRUE);
+  command_line = TRUE;
+}
+
+static void hide_command_line() {
+  gtk_widget_set_visible(cmd_overlay, FALSE);
+  command_line = FALSE;
 }
 
 static void scroll_webview(int dx, int dy) {
@@ -209,6 +220,8 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
     set_mode(NORMAL_MODE);
     if (current_mode == VISUAL_MODE)
       stop_visual_mode();
+    if (command_line)
+      hide_command_line();
     return 1;
   }
 
@@ -239,7 +252,7 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
       scroll_webview(0, NORMAL_MODE_SCROLL_DISTANCE);
       return TRUE;
     case GDK_KEY_colon:
-      gtk_widget_set_visible(cmd_overlay, TRUE);
+      show_command_line();
       return TRUE;
     }
   } else if (current_mode == VISUAL_MODE) {
@@ -296,7 +309,6 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
       return 1;
     }
   }
-
   return 0;
 }
 
@@ -390,8 +402,8 @@ static void activate(GtkApplication *app, gpointer user_data) {
       "background-color: transparent;"
       "}"
       ".url-entry text block-cursor {"
-      "    background-color: #fff;"
-      "    color: #000000;"
+      "background-color: #fff;"
+      "color: #000000;"
       "}"
       ".cmd-line{"
       "background-color: rgba(0, 0, 0, .5);"
@@ -416,8 +428,8 @@ static void activate(GtkApplication *app, gpointer user_data) {
       "background-color: transparent;"
       "}"
       ".cmd-line text block-cursor {"
-      "    background-color: #fff;"
-      "    color: #000000;"
+      "background-color: #fff;"
+      "color: #000000;"
       "}";
   GtkCssProvider *provider = gtk_css_provider_new();
   gtk_css_provider_load_from_string(provider, css);
@@ -449,7 +461,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
   char *path = realpath("./assets/start.html", NULL);
   char *uri = g_filename_to_uri(path, NULL, NULL);
-  webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), "https://www.google.com");
+  webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), uri);
 
   gtk_widget_queue_draw(window);
 }

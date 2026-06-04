@@ -9,3 +9,9 @@
 - bookmarks
 - modes
 - commands
+- history
+- donwload manager
+- config file
+- ad blocking
+- extenstions
+- macros
