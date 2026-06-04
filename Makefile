@@ -1,5 +1,5 @@
-CFLAGS   = -Wall -Wextra -O2 `pkg-config --cflags gtk4 webkitgtk-6.0 libadwaita-1`
-LIBS     = `pkg-config --libs gtk4 webkitgtk-6.0 libadwaita-1`
+CFLAGS   = -Wall -Wextra -O2 `pkg-config --cflags gtk4 webkitgtk-6.0`
+LIBS     = `pkg-config --libs gtk4 webkitgtk-6.0`
 
 SRC = $(shell find src -type f -name "*.c")
 OBJ = $(SRC:src/%.c=build/%.o)
