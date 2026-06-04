@@ -26,6 +26,7 @@ static EditorMode current_mode = NORMAL_MODE;
 static GtkWidget *url_entry;
 static GtkWidget *web_view;
 static GtkWidget *mode_indicator;
+static GtkWidget *cmd_overlay;
 static int VISUAL_MODE_CURSOR_STEP_X = 5;
 static int VISUAL_MODE_CURSOR_STEP_Y = 10;
 static int VISUAL_MODE_CURSOR_WIDTH = 8;
@@ -237,6 +238,9 @@ static gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
     case GDK_KEY_j:
       scroll_webview(0, NORMAL_MODE_SCROLL_DISTANCE);
       return TRUE;
+    case GDK_KEY_colon:
+      gtk_widget_set_visible(cmd_overlay, TRUE);
+      return TRUE;
     }
   } else if (current_mode == VISUAL_MODE) {
     switch (keyval) {
@@ -338,35 +342,83 @@ static void activate(GtkApplication *app, gpointer user_data) {
   url_entry = gtk_entry_new();
   gtk_widget_set_hexpand(url_entry, true);
   gtk_widget_add_css_class(url_entry, "url-entry");
+  gtk_entry_set_overwrite_mode(GTK_ENTRY(url_entry), TRUE);
 
   mode_indicator = gtk_label_new_with_mnemonic(get_mode_name());
   gtk_widget_add_css_class(mode_indicator, "mode-label");
+  gtk_widget_set_size_request(mode_indicator, 137, -1);
+  gtk_label_set_xalign(GTK_LABEL(mode_indicator), 0.0);
   gtk_widget_set_size_request(mode_indicator, 84, -1);
+  gtk_widget_set_halign(mode_indicator, GTK_ALIGN_START);
+  gtk_widget_set_hexpand(mode_indicator, FALSE);
 
-  const char *css = ".mode-label {"
-                    "color: #2c79f5;"
-                    "font-size: 14px;"
-                    "line-height: 0.5;"
-                    "font-family: 'Sans Serif';"
-                    "border-radius: 0px;"
-                    "padding-left: 12px;"
-                    "padding-right: 12px;"
-                    "margin: 0;"
-                    "text-transform: uppercase;"
-                    "font-weight: bolder;"
-                    "}"
-                    ".url-entry,"
-                    ".url-entry ,"
-                    ".url-entry  {"
-                    " border-radius: 0;"
-                    "color: #fff;"
-                    "border: none;"
-                    "box-shadow: none;"
-                    "padding:0  0;"
-                    "outline-width: 0px;"
-                    "background-image: none;"
-                    "background-color: transparent;"
-                    "}";
+  cmd_overlay = gtk_overlay_new();
+  gtk_widget_set_visible(cmd_overlay, FALSE);
+
+  GtkWidget *cmd_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_overlay_add_overlay(GTK_OVERLAY(cmd_overlay), cmd_box);
+
+  GtkWidget *cmd_line = gtk_entry_new();
+  gtk_widget_add_css_class(cmd_line, "cmd-line");
+  gtk_entry_set_overwrite_mode(GTK_ENTRY(cmd_line), TRUE);
+
+  gtk_overlay_add_overlay(GTK_OVERLAY(cmd_overlay), cmd_line);
+  gtk_widget_set_halign(cmd_line, GTK_ALIGN_FILL);
+  gtk_widget_set_valign(cmd_line, GTK_ALIGN_END);
+
+  const char *css =
+      ".mode-label {"
+      "color: #2c79f5;"
+      "font-size: 14px;"
+      "font-family: monospace;"
+      "border-radius: 0px;"
+      "margin: 0;"
+      "padding-left: 8px;"
+      "text-transform: uppercase;"
+      "font-weight: bolder;"
+      "}"
+      ".url-entry  {"
+      "border-radius: 0;"
+      "color: #fff;"
+      "border: none;"
+      "font-family: monospace;"
+      "box-shadow: none;"
+      "padding:0  0;"
+      "margin: 0;"
+      "outline-width: 0px;"
+      "background-image: none;"
+      "background-color: transparent;"
+      "}"
+      ".url-entry text block-cursor {"
+      "    background-color: #fff;"
+      "    color: #000000;"
+      "}"
+      ".cmd-line{"
+      "background-color: rgba(0, 0, 0, .5);"
+      "color: #000;"
+      "font-weight: 500;"
+      "box-shadow: none;"
+      "padding: 0;"
+      "padding-left: 8px;"
+      "background-image: none;"
+      "font-family: monospace;"
+      "outline-width: 0;"
+      "border: none;"
+      "border-radius: 0;"
+      "background-image: none;"
+      "}"
+      ".cmd-line:focus, .cmd-line:focus-within, .cmd-line text:focus{"
+      "outline-width: 0;"
+      "border: none;"
+      "box-shadow: none;"
+      "}"
+      ".cmd-line image, .cmd-line text {"
+      "background-color: transparent;"
+      "}"
+      ".cmd-line text block-cursor {"
+      "    background-color: #fff;"
+      "    color: #000000;"
+      "}";
   GtkCssProvider *provider = gtk_css_provider_new();
   gtk_css_provider_load_from_string(provider, css);
   gtk_style_context_add_provider_for_display(gdk_display_get_default(),
@@ -385,6 +437,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
   gtk_box_append(GTK_BOX(main_box), top_bar);
   gtk_box_append(GTK_BOX(main_box), web_view);
+  gtk_box_append(GTK_BOX(main_box), cmd_overlay);
 
   gtk_window_set_child(GTK_WINDOW(window), main_box);
   gtk_window_present(GTK_WINDOW(window));
@@ -394,12 +447,9 @@ static void activate(GtkApplication *app, gpointer user_data) {
                    NULL);
   gtk_widget_add_controller(window, key_controller);
 
-  WebKitSettings *settings =
-      webkit_web_view_get_settings(WEBKIT_WEB_VIEW(web_view));
-
   char *path = realpath("./assets/start.html", NULL);
   char *uri = g_filename_to_uri(path, NULL, NULL);
-  webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), uri);
+  webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), "https://www.google.com");
 
   gtk_widget_queue_draw(window);
 }
@@ -412,4 +462,5 @@ int main(int argc, char **argv) {
   int status = g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);
   return status;
+  return TRUE;
 }
