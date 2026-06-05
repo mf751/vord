@@ -1,14 +1,13 @@
-
 #include "window.h"
 #include "../ui/style.h"
 #include "../ui/visual_mode.h"
 #include "command_line.h"
 #include "gtk/gtk.h"
 #include "keybindings.h"
+#include "mode.h"
 #include <stdio.h>
 #include <webkit/webkit.h>
 
-static EditorMode current_mode = NORMAL_MODE;
 static GtkWidget *web_view;
 static GtkWidget *mode_indicator;
 static GtkWidget *url_entry;
@@ -52,30 +51,8 @@ void scroll_webview(int dx, int dy) {
 
 GtkWidget *get_web_view() { return web_view; }
 
-EditorMode get_mode() { return current_mode; }
-
-char *get_mode_name() {
-  switch (current_mode) {
-  case NORMAL_MODE:
-    return "Normal";
-  case INSERT_MODE:
-    return "Insert";
-  case ADDRESS_MODE:
-    return "Address";
-  case VISUAL_MODE:
-    return "VISUAL";
-  default:
-    return "Unkown";
-  }
-}
-
-void set_mode(EditorMode new_mode) {
-  if (current_mode == VISUAL_MODE && new_mode == NORMAL_MODE)
-    stop_visual_mode(web_view);
-  current_mode = new_mode;
+void update_mode_indicator() {
   gtk_label_set_text(GTK_LABEL(mode_indicator), get_mode_name());
-  if (new_mode == VISUAL_MODE)
-    start_visual_mode(web_view);
 }
 
 void activate(GtkApplication *app, gpointer user_data) {
@@ -101,17 +78,6 @@ void activate(GtkApplication *app, gpointer user_data) {
   gtk_widget_set_hexpand(mode_indicator, FALSE);
 
   GtkWidget *cmd_overlay = new_cmd_overlay();
-
-  GtkWidget *cmd_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_overlay_add_overlay(GTK_OVERLAY(cmd_overlay), cmd_box);
-
-  GtkWidget *cmd_line = gtk_entry_new();
-  gtk_widget_add_css_class(cmd_line, "cmd-line");
-  gtk_entry_set_overwrite_mode(GTK_ENTRY(cmd_line), TRUE);
-
-  gtk_overlay_add_overlay(GTK_OVERLAY(cmd_overlay), cmd_line);
-  gtk_widget_set_halign(cmd_line, GTK_ALIGN_FILL);
-  gtk_widget_set_valign(cmd_line, GTK_ALIGN_END);
 
   gtk_box_append(GTK_BOX(top_bar), mode_indicator);
   gtk_box_append(GTK_BOX(top_bar), url_entry);
