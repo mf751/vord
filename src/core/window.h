@@ -6,7 +6,7 @@
 
 void activate(GtkApplication *app, gpointer user_data);
 
-void update_mode_indicator();
+void update_mode_indicator(char *text);
 
 void scroll_webview(int dx, int dy);
 
