@@ -62,6 +62,7 @@ void stop_visual_mode(GtkWidget *web_view) {
                                         NULL, NULL, NULL, NULL);
     visual_mode_cursor.x = 0;
     visual_mode_cursor.y = 0;
+    visual_mode_anchor_set = false;
 }
 
 void update_visual_mode_cursor(GtkWidget *web_view) {
