@@ -1,42 +1,49 @@
 #include "window.h"
-#include "../ui/style.h"
+#include "../ui/ui.h"
 #include "../ui/visual_mode.h"
 #include "app.h"
 #include "command_line.h"
+#include "glib.h"
 #include "gtk/gtk.h"
 #include "gtk/gtkshortcut.h"
 #include "keybindings.h"
-#include "pango/pango-layout.h"
+#include "tabs.h"
 #include <stdio.h>
 #include <webkit/webkit.h>
 
-static GtkWidget *web_view;
+static GtkWidget *main_box;
 static GtkWidget *mode_indicator;
 static GtkWidget *url_entry;
+static GtkWidget *tab_bar;
 
-static void go_back() {
-    if (webkit_web_view_can_go_back(WEBKIT_WEB_VIEW(web_view)))
-        webkit_web_view_go_back(WEBKIT_WEB_VIEW(web_view));
-}
-static void go_forward() {
-    if (webkit_web_view_can_go_forward(WEBKIT_WEB_VIEW(web_view)))
-        webkit_web_view_go_forward(WEBKIT_WEB_VIEW(web_view));
-}
-static void reload() { webkit_web_view_reload(WEBKIT_WEB_VIEW(web_view)); }
-
-static void on_url_activate(GtkEntry *entry, gpointer user_data) {
-    const char *text = gtk_editable_get_text(GTK_EDITABLE(entry));
-    if (g_str_has_prefix(text, "http://") || g_str_has_prefix(text, "https://")) {
-        webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), text);
-    } else {
-        char *url = g_strdup_printf("https://www.google.com/search?q=%s", text);
-        webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), url);
-        g_free(url);
-    }
+void add_tab_to_view(Tab *tab) {
+    gtk_box_append(GTK_BOX(tab_bar), tab->container);
+    gtk_box_append(GTK_BOX(main_box), tab->web_view);
 }
 
-static void on_load_changed(WebKitWebView *wv, WebKitLoadEvent load_event,
-                            gpointer user_data) {
+// static void go_back() {
+//     if (webkit_web_view_can_go_back(WEBKIT_WEB_VIEW(web_view)))
+//         webkit_web_view_go_back(WEBKIT_WEB_VIEW(web_view));
+// }
+// static void go_forward() {
+//     if (webkit_web_view_can_go_forward(WEBKIT_WEB_VIEW(web_view)))
+//         webkit_web_view_go_forward(WEBKIT_WEB_VIEW(web_view));
+// }
+// static void reload() { webkit_web_view_reload(WEBKIT_WEB_VIEW(web_view)); }
+//
+// static void on_url_activate(GtkEntry *entry, gpointer user_data) {
+//     const char *text = gtk_editable_get_text(GTK_EDITABLE(entry));
+//     if (g_str_has_prefix(text, "http://") || g_str_has_prefix(text, "https://")) {
+//         webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), text);
+//     } else {
+//         char *url = g_strdup_printf("https://www.google.com/search?q=%s", text);
+//         webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), url);
+//         g_free(url);
+//     }
+// }
+
+void on_load_changed(WebKitWebView *wv, WebKitLoadEvent load_event,
+                     gpointer user_data) {
     if (load_event == WEBKIT_LOAD_FINISHED) {
         const char *uri = webkit_web_view_get_uri(wv);
         if (uri)
@@ -44,14 +51,12 @@ static void on_load_changed(WebKitWebView *wv, WebKitLoadEvent load_event,
     }
 }
 
-void scroll_webview(int dx, int dy) {
+void scroll_webview(App *app, int dx, int dy) {
     char js[120];
     snprintf(js, sizeof(js), "window.scrollBy({left: %d, top: %d});", dx, dy);
-    webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(web_view), js, -1, NULL,
+    webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(app->current_tab->web_view), js, -1, NULL,
                                         NULL, NULL, NULL, NULL);
 }
-
-GtkWidget *get_web_view() { return web_view; }
 
 void update_mode_indicator(char *text) {
     gtk_label_set_text(GTK_LABEL(mode_indicator), text);
@@ -64,23 +69,10 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_window_set_title(GTK_WINDOW(window), "Vord");
     gtk_window_set_default_size(GTK_WINDOW(window), 1920, 1080);
 
-    GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
-    GtkWidget *tab_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    tab_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_widget_add_css_class(tab_bar, "tab-bar");
-    GtkWidget *tab_container = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_widget_add_css_class(tab_container, "tab-container");
-    gtk_widget_add_css_class(tab_container, "active");
-    GtkWidget *tab_number = gtk_label_new_with_mnemonic("[0]");
-    gtk_widget_add_css_class(tab_number, "tab-number");
-    GtkWidget *tab_title = gtk_label_new_with_mnemonic("mf751/vord: web browser vim");
-    gtk_widget_set_size_request(tab_title, 212, -1);
-    gtk_label_set_ellipsize(GTK_LABEL(tab_title), PANGO_ELLIPSIZE_END);
-    gtk_widget_add_css_class(tab_title, "tab-title");
-    gtk_label_set_max_width_chars(GTK_LABEL(tab_title), 1);
-    gtk_box_append(GTK_BOX(tab_bar), tab_container);
-    gtk_box_append(GTK_BOX(tab_container), tab_number);
-    gtk_box_append(GTK_BOX(tab_container), tab_title);
 
     GtkWidget *bar_separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_widget_add_css_class(bar_separator, "bar-separator");
@@ -107,18 +99,15 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_box_append(GTK_BOX(top_bar), url_entry);
     gtk_box_set_spacing(GTK_BOX(top_bar), 0);
 
-    web_view = webkit_web_view_new();
-    app->web_view = web_view;
-
-    gtk_widget_set_vexpand(web_view, TRUE);
-    gtk_widget_set_hexpand(web_view, TRUE);
-    g_signal_connect(web_view, "load-changed", G_CALLBACK(on_load_changed), app);
-
     gtk_box_append(GTK_BOX(main_box), tab_bar);
     gtk_box_append(GTK_BOX(main_box), top_bar);
     gtk_box_append(GTK_BOX(main_box), bar_separator);
-    gtk_box_append(GTK_BOX(main_box), web_view);
     gtk_box_append(GTK_BOX(main_box), cmd_overlay);
+
+    Tab *tab = new_tab(app, "");
+    switch_to_tab(app, tab);
+
+    gtk_box_append(GTK_BOX(main_box), app->current_tab->web_view);
 
     gtk_window_set_child(GTK_WINDOW(window), main_box);
     gtk_window_present(GTK_WINDOW(window));
@@ -129,10 +118,6 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     g_signal_connect(key_controller, "key-pressed", G_CALLBACK(on_key_press),
                      app);
     gtk_widget_add_controller(window, key_controller);
-
-    char *path = realpath("./src/ui/start.html", NULL);
-    char *uri = g_filename_to_uri(path, NULL, NULL);
-    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(web_view), uri);
 
     gtk_widget_queue_draw(window);
 }

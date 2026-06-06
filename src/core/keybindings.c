@@ -7,6 +7,7 @@
 #include "glibconfig.h"
 #include "gtk/gtk.h"
 #include "gtk/gtkshortcut.h"
+#include "tabs.h"
 #include "window.h"
 
 gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
@@ -20,7 +21,7 @@ gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
     if (keyval == GDK_KEY_Escape) {
         set_mode(app, NORMAL_MODE);
         if (app->current_mode == VISUAL_MODE)
-            stop_visual_mode(app->web_view);
+            stop_visual_mode(app->current_tab->web_view);
         if (command_line_showen)
             hide_command_line();
         return 1;
@@ -31,6 +32,14 @@ gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
 
     if (app->current_mode == NORMAL_MODE) {
         switch (keyval) {
+        case GDK_KEY_t:
+            if (ctrl_pressed) {
+                switch_to_next_tab(app);
+                break;
+            }
+            Tab *tab = new_tab(app, "");
+            switch_to_tab(app, tab);
+            break;
         case GDK_KEY_i:
             set_mode(app, INSERT_MODE);
             break;
@@ -38,16 +47,16 @@ gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
             set_mode(app, VISUAL_MODE);
             break;
         case GDK_KEY_h:
-            scroll_webview(-NORMAL_MODE_SCROLL_DISTANCE, 0);
+            scroll_webview(app, -NORMAL_MODE_SCROLL_DISTANCE, 0);
             break;
         case GDK_KEY_l:
-            scroll_webview(NORMAL_MODE_SCROLL_DISTANCE, 0);
+            scroll_webview(app, NORMAL_MODE_SCROLL_DISTANCE, 0);
             break;
         case GDK_KEY_k:
-            scroll_webview(0, -NORMAL_MODE_SCROLL_DISTANCE);
+            scroll_webview(app, 0, -NORMAL_MODE_SCROLL_DISTANCE);
             break;
         case GDK_KEY_j:
-            scroll_webview(0, NORMAL_MODE_SCROLL_DISTANCE);
+            scroll_webview(app, 0, NORMAL_MODE_SCROLL_DISTANCE);
             break;
         case GDK_KEY_colon:
             show_command_line();
@@ -57,28 +66,28 @@ gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
         switch (keyval) {
         case GDK_KEY_h:
             if (ctrl_pressed) {
-                scroll_webview(-NORMAL_MODE_SCROLL_DISTANCE, 0);
+                scroll_webview(app, -NORMAL_MODE_SCROLL_DISTANCE, 0);
                 break;
             }
             change_visual_mode_cursor(-VISUAL_MODE_CURSOR_STEP_X, 0);
             break;
         case GDK_KEY_l:
             if (ctrl_pressed) {
-                scroll_webview(NORMAL_MODE_SCROLL_DISTANCE, 0);
+                scroll_webview(app, NORMAL_MODE_SCROLL_DISTANCE, 0);
                 break;
             }
             change_visual_mode_cursor(VISUAL_MODE_CURSOR_STEP_X, 0);
             break;
         case GDK_KEY_k:
             if (ctrl_pressed) {
-                scroll_webview(0, -NORMAL_MODE_SCROLL_DISTANCE);
+                scroll_webview(app, 0, -NORMAL_MODE_SCROLL_DISTANCE);
                 break;
             }
             change_visual_mode_cursor(0, -VISUAL_MODE_CURSOR_STEP_Y);
             break;
         case GDK_KEY_j:
             if (ctrl_pressed) {
-                scroll_webview(0, NORMAL_MODE_SCROLL_DISTANCE);
+                scroll_webview(app, 0, NORMAL_MODE_SCROLL_DISTANCE);
                 break;
             }
             change_visual_mode_cursor(0, VISUAL_MODE_CURSOR_STEP_Y);
@@ -92,11 +101,11 @@ gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
             visual_mode_anchor_cursor();
             break;
         case GDK_KEY_y:
-            yank_visual_selection(app->web_view);
+            yank_visual_selection(app->current_tab->web_view);
             break;
         }
 
-        update_visual_mode_cursor(app->web_view);
+        update_visual_mode_cursor(app->current_tab->web_view);
     }
     return 0;
 }

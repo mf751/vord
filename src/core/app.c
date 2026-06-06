@@ -32,7 +32,7 @@ char *get_mode_name(EditorMode mode) {
 }
 
 void set_mode(App *app, EditorMode new_mode) {
-    GtkWidget *web_view = app->web_view;
+    GtkWidget *web_view = app->current_tab->web_view;
     if (app->current_mode == VISUAL_MODE && new_mode == NORMAL_MODE)
         stop_visual_mode(web_view);
     app->current_mode = new_mode;

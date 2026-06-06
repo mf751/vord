@@ -1,6 +1,7 @@
 #ifndef APP_H
 #define APP_H
 
+#include "glib.h"
 #include "gtk/gtk.h"
 #include "gtk/gtkshortcut.h"
 
@@ -12,8 +13,16 @@ typedef enum {
 } EditorMode;
 
 typedef struct {
-    GtkApplication *gtk_app;
+    GtkWidget *container;
+    GtkWidget *number;
+    GtkWidget *title;
     GtkWidget *web_view;
+} Tab;
+
+typedef struct {
+    GtkApplication *gtk_app;
+    GList *tabs;
+    Tab *current_tab;
 
     EditorMode current_mode;
 } App;
