@@ -93,8 +93,6 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_widget_set_halign(mode_indicator, GTK_ALIGN_START);
     gtk_widget_set_hexpand(mode_indicator, FALSE);
 
-    GtkWidget *cmd_overlay = new_cmd_overlay();
-
     gtk_box_append(GTK_BOX(top_bar), mode_indicator);
     gtk_box_append(GTK_BOX(top_bar), url_entry);
     gtk_box_set_spacing(GTK_BOX(top_bar), 0);
@@ -102,12 +100,12 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_box_append(GTK_BOX(main_box), tab_bar);
     gtk_box_append(GTK_BOX(main_box), top_bar);
     gtk_box_append(GTK_BOX(main_box), bar_separator);
-    gtk_box_append(GTK_BOX(main_box), cmd_overlay);
 
     Tab *tab = new_tab(app, "");
     switch_to_tab(app, tab);
 
-    gtk_box_append(GTK_BOX(main_box), app->current_tab->web_view);
+    GtkWidget *cmd_overlay = new_cmd_overlay(app->current_tab->web_view);
+    gtk_box_append(GTK_BOX(main_box), cmd_overlay);
 
     gtk_window_set_child(GTK_WINDOW(window), main_box);
     gtk_window_present(GTK_WINDOW(window));

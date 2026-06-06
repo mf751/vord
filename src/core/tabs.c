@@ -10,7 +10,6 @@ Tab *new_tab(App *app, char *uri) {
     Tab *tab = g_new0(Tab, 1);
 
     add_tab_widget(tab, "", 0);
-
     add_tab_to_view(tab);
     app->tabs = g_list_append(app->tabs, tab);
 
@@ -39,12 +38,10 @@ void switch_to_next_tab(App *app) {
         return;
 
     GList *current_node = g_list_find(app->tabs, app->current_tab);
-
     if (!current_node)
         return;
 
     GList *next_node = current_node->next;
-
     if (next_node) {
         Tab *next_tab = (Tab *)next_node->data;
         switch_to_tab(app, next_tab);

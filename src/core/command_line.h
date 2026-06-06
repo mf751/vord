@@ -4,7 +4,7 @@
 #include "gtk/gtk.h"
 #include <stdbool.h>
 
-GtkWidget *new_cmd_overlay();
+GtkWidget *new_cmd_overlay(GtkWidget *web_view);
 
 void show_command_line();
 

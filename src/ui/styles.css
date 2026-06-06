@@ -26,12 +26,7 @@
   padding: 0;
   margin: 0;
   outline-width: 0px;
-  background-image: red;
-  background-color: red;
   font-weight: 600;
-}
-.url-entry image .url-entry text {
-  background-color: red;
 }
 .url-entry text block-cursor {
   background-color: #fff;
@@ -109,7 +104,9 @@
 .tab-container.active .tab-number,
 .tab-container.active .tab-title {
   font-weight: 800;
+  color: #2c79f5;
 }
+.tab-container.active .tab-title {
 .bar-separator {
   background-color: white;
 }
