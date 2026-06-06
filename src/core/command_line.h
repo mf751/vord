@@ -2,9 +2,10 @@
 #define COMMAND_LINE_H
 
 #include "gtk/gtk.h"
+#include "gtk/gtkshortcut.h"
 #include <stdbool.h>
 
-GtkWidget *new_cmd_overlay(GtkWidget *web_view);
+void add_cmd_to_overlay(GtkWidget *overlay);
 
 void show_command_line();
 

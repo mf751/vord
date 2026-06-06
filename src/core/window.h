@@ -7,6 +7,8 @@
 
 void add_tab_to_view(Tab *tab);
 
+void set_tab_on_view(Tab *tab);
+
 void activate(GtkApplication *app, gpointer user_data);
 
 void on_load_changed(WebKitWebView *wv, WebKitLoadEvent load_event,

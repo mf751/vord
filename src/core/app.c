@@ -1,5 +1,6 @@
 #include "app.h"
 #include "../ui/visual_mode.h"
+#include "command_line.h"
 #include "gtk/gtk.h"
 #include "window.h"
 
@@ -33,8 +34,11 @@ char *get_mode_name(EditorMode mode) {
 
 void set_mode(App *app, EditorMode new_mode) {
     GtkWidget *web_view = app->current_tab->web_view;
-    if (app->current_mode == VISUAL_MODE && new_mode == NORMAL_MODE)
-        stop_visual_mode(web_view);
+    if (new_mode == NORMAL_MODE) {
+        hide_command_line();
+        if (app->current_mode == VISUAL_MODE)
+            stop_visual_mode(web_view);
+    }
     app->current_mode = new_mode;
     update_mode_indicator(get_mode_name(app->current_mode));
     if (new_mode == VISUAL_MODE)

@@ -22,9 +22,6 @@ gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
         set_mode(app, NORMAL_MODE);
         if (app->current_mode == VISUAL_MODE)
             stop_visual_mode(app->current_tab->web_view);
-        if (command_line_showen)
-            hide_command_line();
-        return 1;
     }
 
     gboolean ctrl_pressed = (state & GDK_CONTROL_MASK) != 0;

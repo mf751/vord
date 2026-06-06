@@ -4,6 +4,7 @@
 #include "app.h"
 #include "command_line.h"
 #include "glib.h"
+#include "glibconfig.h"
 #include "gtk/gtk.h"
 #include "gtk/gtkshortcut.h"
 #include "keybindings.h"
@@ -15,10 +16,37 @@ static GtkWidget *main_box;
 static GtkWidget *mode_indicator;
 static GtkWidget *url_entry;
 static GtkWidget *tab_bar;
+static GtkWidget *tab_stack;
+
+#include <gtk/gtk.h>
+#include <stdio.h>
+
+void debug_print_widget_children(GtkWidget *widget) {
+    printf("=== main_box children ===\n");
+
+    GtkWidget *child = gtk_widget_get_first_child(widget);
+    int i = 0;
+
+    while (child) {
+        const char *name = gtk_widget_get_name(child);
+        const char *type = G_OBJECT_TYPE_NAME(child);
+
+        printf("[%d] Type: %-20s | Name: %s | Visible: %d | VExpand: %d\n",
+               i++,
+               type,
+               name ? name : "(null)",
+               gtk_widget_get_visible(child),
+               gtk_widget_get_vexpand(child));
+
+        child = gtk_widget_get_next_sibling(child);
+    }
+
+    printf("========================\n\n");
+}
 
 void add_tab_to_view(Tab *tab) {
     gtk_box_append(GTK_BOX(tab_bar), tab->container);
-    gtk_box_append(GTK_BOX(main_box), tab->web_view);
+    gtk_stack_add_child(GTK_STACK(tab_stack), tab->web_view);
 }
 
 // static void go_back() {
@@ -101,16 +129,22 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_box_append(GTK_BOX(main_box), top_bar);
     gtk_box_append(GTK_BOX(main_box), bar_separator);
 
-    Tab *tab = new_tab(app, "");
-    switch_to_tab(app, tab);
+    GtkWidget *overlay = gtk_overlay_new();
+    add_cmd_to_overlay(overlay);
+    tab_stack = gtk_stack_new();
+    gtk_widget_set_hexpand(tab_stack, TRUE);
+    gtk_widget_set_vexpand(tab_stack, TRUE);
+    gtk_overlay_set_child(GTK_OVERLAY(overlay), tab_stack);
 
-    GtkWidget *cmd_overlay = new_cmd_overlay(app->current_tab->web_view);
-    gtk_box_append(GTK_BOX(main_box), cmd_overlay);
+    gtk_box_append(GTK_BOX(main_box), overlay);
 
     gtk_window_set_child(GTK_WINDOW(window), main_box);
     gtk_window_present(GTK_WINDOW(window));
 
     load_css("./src/ui/styles.css");
+
+    Tab *tab = new_tab(app, "");
+    switch_to_tab(app, tab);
 
     GtkEventController *key_controller = gtk_event_controller_key_new();
     g_signal_connect(key_controller, "key-pressed", G_CALLBACK(on_key_press),

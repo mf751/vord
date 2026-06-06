@@ -2,6 +2,8 @@
 
 #include "ui.h"
 #include "../core/app.h"
+#include "../core/command_line.h"
+#include "glibconfig.h"
 #include "gtk/gtk.h"
 #include "gtk/gtkcssprovider.h"
 #include "gtk/gtkshortcut.h"
@@ -29,7 +31,6 @@ char *start_page_uri() {
 void *add_tab_widget(Tab *tab, char *title, int number) {
     GtkWidget *tab_container = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_widget_add_css_class(tab_container, "tab-container");
-    gtk_widget_add_css_class(tab_container, "active");
     GtkWidget *tab_number = gtk_label_new_with_mnemonic("[0]");
     gtk_widget_add_css_class(tab_number, "tab-number");
     GtkWidget *tab_title = gtk_label_new_with_mnemonic("mf751/vord: web browser vim");

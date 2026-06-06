@@ -2,6 +2,7 @@
 #include "../ui/ui.h"
 #include "app.h"
 #include "glib.h"
+#include "glibconfig.h"
 #include "gtk/gtk.h"
 #include "webkit/webkit.h"
 #include "window.h"
