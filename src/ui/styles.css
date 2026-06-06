@@ -1,28 +1,43 @@
+:root {
+  --active-tab: 1;
+}
+
+.top-bar-container {
+  min-height: 32px;
+}
+
 .mode-label {
   color: #2c79f5;
   font-size: 14px;
   font-family: monospace;
   border-radius: 0px;
   margin: 0;
+  padding: 0;
   padding-left: 8px;
   text-transform: uppercase;
   font-weight: bolder;
 }
 .url-entry {
   border-radius: 0;
-  color: #fff;
+  color: #000;
   border: none;
   font-family: monospace;
   box-shadow: none;
-  padding: 0 0;
+  padding: 0;
   margin: 0;
   outline-width: 0px;
-  background-image: none;
-  background-color: transparent;
+  background-image: red;
+  background-color: red;
+  font-weight: 600;
+}
+.url-entry image .url-entry text {
+  background-color: red;
 }
 .url-entry text block-cursor {
   background-color: #fff;
   color: #000000;
+  padding: 0;
+  margin: 0;
 }
 .cmd-line {
   background-color: rgba(0, 0, 0, 0.5);
@@ -54,4 +69,47 @@
 .cmd-line text block-cursor {
   background-color: #fff;
   color: #000000;
+}
+
+.tab-bar {
+  border-bottom: 1px solid white;
+}
+
+.tab-container {
+  margin-left: 0px;
+  min-height: 32px;
+  min-width: 228px;
+  padding: 0 8px;
+}
+.tab-container.active {
+  border: 1px solid white;
+  border-radius: 6px 6px 0px 0px;
+  border-bottom: none;
+  box-shadow: 0px 4px 0px 0px black;
+  font-weight: 800;
+}
+.tab-container:first-child {
+  border-left-color: black;
+  border-radius: 0px 6px 0px 0px;
+}
+
+.tab-number {
+  letter-spacing: 2px;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.tab-title {
+  margin-left: 8px;
+  font-weight: 400;
+  font-family: monospace;
+}
+
+.tab-container.active .tab-number,
+.tab-container.active .tab-title {
+  font-weight: 800;
+}
+.bar-separator {
+  background-color: white;
 }

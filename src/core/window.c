@@ -4,7 +4,9 @@
 #include "app.h"
 #include "command_line.h"
 #include "gtk/gtk.h"
+#include "gtk/gtkshortcut.h"
 #include "keybindings.h"
+#include "pango/pango-layout.h"
 #include <stdio.h>
 #include <webkit/webkit.h>
 
@@ -56,7 +58,6 @@ void update_mode_indicator(char *text) {
 }
 
 void activate(GtkApplication *gtk_app, gpointer user_data) {
-
     App *app = new_app(gtk_app);
 
     GtkWidget *window = gtk_application_window_new(gtk_app);
@@ -65,16 +66,36 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
 
     GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
+    GtkWidget *tab_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_add_css_class(tab_bar, "tab-bar");
+    GtkWidget *tab_container = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_add_css_class(tab_container, "tab-container");
+    gtk_widget_add_css_class(tab_container, "active");
+    GtkWidget *tab_number = gtk_label_new_with_mnemonic("[0]");
+    gtk_widget_add_css_class(tab_number, "tab-number");
+    GtkWidget *tab_title = gtk_label_new_with_mnemonic("mf751/vord: web browser vim");
+    gtk_widget_set_size_request(tab_title, 212, -1);
+    gtk_label_set_ellipsize(GTK_LABEL(tab_title), PANGO_ELLIPSIZE_END);
+    gtk_widget_add_css_class(tab_title, "tab-title");
+    gtk_label_set_max_width_chars(GTK_LABEL(tab_title), 1);
+    gtk_box_append(GTK_BOX(tab_bar), tab_container);
+    gtk_box_append(GTK_BOX(tab_container), tab_number);
+    gtk_box_append(GTK_BOX(tab_container), tab_title);
+
+    GtkWidget *bar_separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_widget_add_css_class(bar_separator, "bar-separator");
+
     GtkWidget *top_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_add_css_class(url_entry, "top-bar-container");
 
     url_entry = gtk_entry_new();
     gtk_widget_set_hexpand(url_entry, true);
     gtk_widget_add_css_class(url_entry, "url-entry");
     gtk_entry_set_overwrite_mode(GTK_ENTRY(url_entry), TRUE);
+    gtk_widget_set_valign(url_entry, GTK_ALIGN_START);
 
     mode_indicator = gtk_label_new_with_mnemonic(get_mode_name(app->current_mode));
     gtk_widget_add_css_class(mode_indicator, "mode-label");
-    gtk_widget_set_size_request(mode_indicator, 137, -1);
     gtk_label_set_xalign(GTK_LABEL(mode_indicator), 0.0);
     gtk_widget_set_size_request(mode_indicator, 84, -1);
     gtk_widget_set_halign(mode_indicator, GTK_ALIGN_START);
@@ -93,7 +114,9 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_widget_set_hexpand(web_view, TRUE);
     g_signal_connect(web_view, "load-changed", G_CALLBACK(on_load_changed), app);
 
+    gtk_box_append(GTK_BOX(main_box), tab_bar);
     gtk_box_append(GTK_BOX(main_box), top_bar);
+    gtk_box_append(GTK_BOX(main_box), bar_separator);
     gtk_box_append(GTK_BOX(main_box), web_view);
     gtk_box_append(GTK_BOX(main_box), cmd_overlay);
 

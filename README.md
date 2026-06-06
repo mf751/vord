@@ -15,3 +15,4 @@
 - ad blocking
 - extenstions
 - macros
+- focus mode
