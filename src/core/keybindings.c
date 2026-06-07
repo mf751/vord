@@ -34,9 +34,14 @@ gboolean on_key_press(GtkEventControllerKey *controller, guint keyval,
                 switch_to_next_tab(app);
                 break;
             }
-            Tab *tab = new_tab(app, "");
+            Tab *tab = new_tab(app, "https://www.google.com");
             switch_to_tab(app, tab);
             break;
+        case GDK_KEY_w:
+            if (ctrl_pressed) {
+                close_current_tab(app);
+                break;
+            }
         case GDK_KEY_i:
             set_mode(app, INSERT_MODE);
             break;

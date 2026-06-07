@@ -5,7 +5,9 @@
 #include "tabs.h"
 #include "webkit/webkit.h"
 
-void add_tab_to_view(Tab *tab);
+void add_tab(Tab *tab);
+
+void remove_tab(Tab *tab);
 
 void set_tab_on_view(Tab *tab);
 

@@ -11,10 +11,10 @@ Tab *new_tab(App *app, char *uri) {
     Tab *tab = g_new0(Tab, 1);
 
     add_tab_widget(tab, "", 0);
-    add_tab_to_view(tab);
+    add_tab(tab);
     app->tabs = g_list_append(app->tabs, tab);
 
-    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(tab->web_view), start_page_uri());
+    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(tab->web_view), uri);
 
     g_signal_connect(tab->web_view, "load-changed", G_CALLBACK(on_load_changed), app);
     return tab;
@@ -50,4 +50,21 @@ void switch_to_next_tab(App *app) {
     }
     Tab *first_tab = (Tab *)app->tabs->data;
     switch_to_tab(app, first_tab);
+}
+
+void close_tab(App *app, Tab *tab) {
+    if (g_list_length(app->tabs) == 1) {
+        Tab *start_tab = new_tab(app, start_page_uri());
+        add_tab(start_tab);
+        switch_to_tab(app, start_tab);
+    } else {
+        switch_to_next_tab(app);
+    }
+
+    remove_tab(tab);
+    app->tabs = g_list_remove(app->tabs, tab);
+}
+
+void close_current_tab(App *app) {
+    close_tab(app, app->current_tab);
 }

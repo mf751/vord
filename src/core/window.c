@@ -44,9 +44,14 @@ void debug_print_widget_children(GtkWidget *widget) {
     printf("========================\n\n");
 }
 
-void add_tab_to_view(Tab *tab) {
+void add_tab(Tab *tab) {
     gtk_box_append(GTK_BOX(tab_bar), tab->container);
     gtk_stack_add_child(GTK_STACK(tab_stack), tab->web_view);
+}
+
+void remove_tab(Tab *tab) {
+    gtk_box_remove(GTK_BOX(tab_bar), tab->container);
+    gtk_stack_remove(GTK_STACK(tab_stack), tab->web_view);
 }
 
 // static void go_back() {
@@ -143,7 +148,7 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
 
     load_css("./src/ui/styles.css");
 
-    Tab *tab = new_tab(app, "");
+    Tab *tab = new_tab(app, start_page_uri());
     switch_to_tab(app, tab);
 
     GtkEventController *key_controller = gtk_event_controller_key_new();
