@@ -1,4 +1,3 @@
-
 #include "../ui/visual_mode.h"
 #include "../utils/configs.h"
 #include "app.h"

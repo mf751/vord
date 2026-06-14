@@ -52,13 +52,31 @@ void switch_to_next_tab(App *app) {
     switch_to_tab(app, first_tab);
 }
 
+void switch_to_prev_tab(App *app) {
+    if (!app->tabs || !app->current_tab)
+        return;
+
+    GList *current_node = g_list_find(app->tabs, app->current_tab);
+    if (!current_node)
+        return;
+
+    GList *prev_node = current_node->prev;
+    if (prev_node) {
+        Tab *prev_tab = (Tab *)prev_node->data;
+        switch_to_tab(app, prev_tab);
+        return;
+    }
+    Tab *last_tab = (Tab *)g_list_last(app->tabs)->data;
+    switch_to_tab(app, last_tab);
+}
+
 void close_tab(App *app, Tab *tab) {
     if (g_list_length(app->tabs) == 1) {
         Tab *start_tab = new_tab(app, start_page_uri());
         add_tab(start_tab);
         switch_to_tab(app, start_tab);
     } else {
-        switch_to_next_tab(app);
+        switch_to_prev_tab(app);
     }
 
     remove_tab(tab);

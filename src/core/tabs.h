@@ -6,6 +6,7 @@
 Tab *new_tab(App *app, char *uri);
 void switch_to_tab(App *app, Tab *tab);
 void switch_to_next_tab(App *app);
+void switch_to_prev_tab(App *app);
 void close_tab(App *app, Tab *tab);
 void close_current_tab(App *app);
 

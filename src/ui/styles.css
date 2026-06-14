@@ -35,7 +35,7 @@
   margin: 0;
 }
 .cmd-line {
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.7);
   color: #000;
   font-weight: 500;
   box-shadow: none;
@@ -106,7 +106,6 @@
   font-weight: 800;
   color: #2c79f5;
 }
-.tab-container.active .tab-title {
 .bar-separator {
   background-color: white;
 }

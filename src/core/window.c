@@ -21,29 +21,6 @@ static GtkWidget *tab_stack;
 #include <gtk/gtk.h>
 #include <stdio.h>
 
-void debug_print_widget_children(GtkWidget *widget) {
-    printf("=== main_box children ===\n");
-
-    GtkWidget *child = gtk_widget_get_first_child(widget);
-    int i = 0;
-
-    while (child) {
-        const char *name = gtk_widget_get_name(child);
-        const char *type = G_OBJECT_TYPE_NAME(child);
-
-        printf("[%d] Type: %-20s | Name: %s | Visible: %d | VExpand: %d\n",
-               i++,
-               type,
-               name ? name : "(null)",
-               gtk_widget_get_visible(child),
-               gtk_widget_get_vexpand(child));
-
-        child = gtk_widget_get_next_sibling(child);
-    }
-
-    printf("========================\n\n");
-}
-
 void add_tab(Tab *tab) {
     gtk_box_append(GTK_BOX(tab_bar), tab->container);
     gtk_stack_add_child(GTK_STACK(tab_stack), tab->web_view);
@@ -107,6 +84,12 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     tab_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_widget_add_css_class(tab_bar, "tab-bar");
 
+    GtkWidget *scrollable_container = gtk_scrolled_window_new();
+    gtk_widget_set_hexpand(scrollable_container, TRUE);
+    gtk_widget_set_halign(scrollable_container, GTK_ALIGN_FILL);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrollable_container), tab_bar);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollable_container), GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
+
     GtkWidget *bar_separator = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_widget_add_css_class(bar_separator, "bar-separator");
 
@@ -130,7 +113,7 @@ void activate(GtkApplication *gtk_app, gpointer user_data) {
     gtk_box_append(GTK_BOX(top_bar), url_entry);
     gtk_box_set_spacing(GTK_BOX(top_bar), 0);
 
-    gtk_box_append(GTK_BOX(main_box), tab_bar);
+    gtk_box_append(GTK_BOX(main_box), scrollable_container);
     gtk_box_append(GTK_BOX(main_box), top_bar);
     gtk_box_append(GTK_BOX(main_box), bar_separator);
 
