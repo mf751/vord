@@ -18,4 +18,4 @@
 - focus mode
 
 ## Demo
-![Demo](demo.png)
+![Demo](demo-img.png)
