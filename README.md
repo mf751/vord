@@ -16,3 +16,6 @@
 - extenstions
 - macros
 - focus mode
+
+## Demo
+![Demo](demo.png)
